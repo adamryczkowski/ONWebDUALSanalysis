@@ -184,6 +184,7 @@ regression_recode_factor_1<-function(varname, dt, keep_nominal=character(0)) {
   #                             levels=c(1,2,3), labels=c('A', 'B', 'C')))
   #as.integer(dt[[varname]])
   tmp_fac<-addNA(as.integer(dt[[varname]]), ifany=TRUE)
+  mylabel<-attr(dt[[varname]], 'label')
   if(length(unique(tmp_fac))>1) {
     tmp_df<-setNames(tibble::tibble(tmp_fac), varname)
     tmp_df<-predict(caret::dummyVars(~ ., tmp_df, fullRank=FALSE, levelsOnly = FALSE, drop2nd=TRUE), tmp_df)
@@ -200,11 +201,24 @@ regression_recode_factor_1<-function(varname, dt, keep_nominal=character(0)) {
       } else {
         setattr(tmp_fac, 'levels', attr(dt[[varname]], 'levels'))
       }
+      data.table::setattr(tmp_fac, 'label', mylabel)
       setNames(data.table(x=tmp_fac), varname)
+
       #We still need to replace small groups with NA.
     } else {
       to_keep<-setdiff(seq(ncol(tmp_df)), to_remove)
-      data.table::as.data.table(tmp_df[,to_keep, drop=FALSE])
+      tmp_df<-data.table::as.data.table(tmp_df[,to_keep, drop=FALSE])
+      mylabels<-levels(dt[[varname]])
+      for(i in seq_along(colnames(tmp_df))) {
+        mycolname<-colnames(tmp_df)[[i]]
+        if(stringr::str_detect(mycolname, '\\.NA$')) {
+          data.table::setattr(tmp_df[[i]], 'label', paste0(mylabel, " - NA"))
+        } else {
+          a<-as.integer(stringr::str_match(mycolname, '\\.([0-9]+)$')[,2])
+          data.table::setattr(tmp_df[[i]], 'label', paste0(mylabel, " - ", mylabels[a]))
+        }
+      }
+      tmp_df
     }
   } else {
     data.table()
@@ -252,6 +266,7 @@ regression_recode_factor_1<-function(varname, dt, keep_nominal=character(0)) {
 # }
 
 regression_recode_binary_1<-function(varname, dt, count_threshold=1) {
+  browser()
   # cat(varname)
   # if(varname=='iv53') {
   #   browser()
@@ -285,6 +300,7 @@ prepare_variables_hybrid<-function(dt, iv_names, dv_name, keep_nominal=character
   dv<-dt[[dv_name]]
   nas<-is.na(dv)
   mydt<-as.data.table(dt[!nas,iv_names])
+  mydt<-danesurowe::copy_dt_attributes(dt, mydt)
   dv<-dv[!nas]
 
   fobs<-purrr::map_dbl(iv_names, ~danesurowe::GetFOB(mydt[[.]], flag_recalculate_uniques = TRUE))
@@ -292,6 +308,7 @@ prepare_variables_hybrid<-function(dt, iv_names, dv_name, keep_nominal=character
   ordinals<-iv_names[fobs==2]
   ans<-list()
   if(length(ordinals)>0) {
+    browser()
     bins<-regression_recode_ordinal(ordinals, depvar, mydt)
     ans<-c(ans, bins$df)
   }
@@ -313,9 +330,10 @@ prepare_variables_hybrid<-function(dt, iv_names, dv_name, keep_nominal=character
   if(length(numerics)>0) {
     a<-mydt %>% select_(.dots=numerics) %>% as_tibble() %>% mutate_all(funs(as.numeric))
     #    a<-flatten(purrr::map(numerics, ~scale(mydt[[.]])))
-    ans<-c(ans,a)
+#    browser()
+    tmp_df<-c(ans,a)
     missing_pattern<-mice::md.pattern(a)
-    ans2<-as.data.table(ans)
+    ans2<-as.data.table(tmp_df)
 
     imputes<-NULL
     if(nrow(missing_pattern)>2) {
@@ -332,12 +350,18 @@ prepare_variables_hybrid<-function(dt, iv_names, dv_name, keep_nominal=character
           ans2[,(colname):=as.numeric(var)]
         }
         imputes<-data.frame(varname=vars_miss, missing_count=unlist(imputes), mean=unlist(ms))
-
+        ans2<-cbind(ans, imputes)
       } else {
         library(mice)
         imp<-mice::mice(ans2)
         ans2<-complete(imp)
+        ans2<-danesurowe::copy_dt_attributes(data.frame(ans), data.frame(ans2))
       }
+    }
+    for ( mycolname in numerics) {
+      mylabel<-attr(mydt[[mycolname]], 'label')
+      data.table::setattr(ans2[[mycolname]], 'label', mylabel)
+
     }
   } else{
     ans2<-mydt
