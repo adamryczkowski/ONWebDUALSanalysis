@@ -46,5 +46,5 @@ calc_models<-function(model_names, dv_nr, ncores=20) {
   )
 
 
-  purrr::map(model_names, do_model_inner, ads=ads, tc=tc, dv_name=dv_name)
+  list(ads=ads, models=purrr::map(model_names, do_model_inner, ads=ads, tc=tc, dv_name=dv_name))
 }
