@@ -15,6 +15,8 @@ registerDoMC(4)
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
 #empty_models<-c('avNNet', 'ANFIS')
+really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD')
+
 empty_models<-character(0)
 tensor_flow<-c('mlpKerasDecay', 'mlpKerasDropout')
 not_parallel<-c('M5', 'M5Rules')
