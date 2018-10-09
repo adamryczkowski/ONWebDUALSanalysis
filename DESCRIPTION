@@ -19,7 +19,8 @@ Imports:
   danesurowe,
   doMC,
   glmnet,
-  caret
+  caret,
+  mice
 Depends:
   data.table,
   danesurowe,

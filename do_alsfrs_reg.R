@@ -31,6 +31,7 @@ all_models<-unique((caret::modelLookup() %>% filter(forReg==TRUE & ! model %in% 
 
 model_names=time_consuming_models
 model_names=c(all_models, c('mlpKerasDropout','M5', 'M5Rules'))
+model_names=all_models
 model_names=not_parallel
 
 do_model_inner<-function(dv_name, model_name, ads, tc) {
@@ -58,6 +59,7 @@ tc <- caret::trainControl(index = cvIndex,
                           number = 10)
 
 
+caret::checkInstall(model_names)
 do_model_inner(dv_name, 'mlpKerasDropout', ads, tc)
 models<-
   purrr::map(model_names, do_model_inner, ads=ads, tc=tc, dv_name=dv_name)
