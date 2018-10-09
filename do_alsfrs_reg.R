@@ -34,6 +34,7 @@ model_names=time_consuming_models
 model_names=c(all_models, c('mlpKerasDropout','M5', 'M5Rules'))
 model_names=all_models
 model_names=not_parallel
+model_names=c("earth", "enet", "blasso", "BstLm", "glmnet", "RRF", "ctree2", "ranger", "RRFglobal", "rf", "cforest", "evtree", "gbm", "bagEarth", "spikeslab", "ctree", "nodeHarvest", "lars", "lasso", "rpart2", "parRF", "cubist", "lars2", "rqlasso", "bagEarthGCV", "rqnc", "rpart", "gcvEarth", "glmStepAIC", "penalized", "msaenet", "rpart1SE", "rfRules", "qrf", "relaxo")
 
 do_model_inner<-function(dv_name, model_name, ads, tc) {
   plik_name<-paste0('model_', dv_name, '_', model_name, '.rds')
@@ -44,9 +45,10 @@ do_model_inner<-function(dv_name, model_name, ads, tc) {
     cat(paste0("Calculating model ", model_name, "...\n"))
     tryCatch(
       {
-        model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc)
+        model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
 #        model<-caret::rfe(x = ads, y = ads$dv, method = model_name, rfeControl = tc, sizes=gen_int_geom_series(52, 20))
         saveRDS(model, plik_name)
+        model
       },
       error=function(e) {
         cat(paste0("Model ", model_name, " returned error: ", e$message, '\n'))
@@ -63,9 +65,12 @@ groupvar<-ads$iv56
 cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
 
 tc <- caret::trainControl(index = cvIndex,
-                          method = 'cv',
-                          repeats = 5,
-                          number = 10)
+                          method = 'adaptive_cv',
+                          number = 10, repeats = 10,
+                          adaptive = list(min = 5, alpha = 0.05,
+                                          method = "gls", complete = TRUE),
+                          search = "random"
+                          )
 
 
 #caret::checkInstall(model_names)
