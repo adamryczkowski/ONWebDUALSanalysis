@@ -4,7 +4,7 @@ library(doMC)
 registerDoMC()
 
 
-time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
+time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
 #empty_models<-c('avNNet', 'ANFIS')
 really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD')
 
@@ -32,6 +32,7 @@ model_names=c("nodeHarvest", "earth", "enet", "BstLm", "glmnet", "RRF", "ctree2"
               "cubist", "lars2", "rqnc", "rpart",
               "penalized", "msaenet", "rfRules", "qrf", "relaxo")
 ans<-calc_models(model_names, dv_nr=5, adaptive = NA)
+ans<-calc_models('gbm_h2o', dv_nr=5, adaptive = NA)
 
 ada_models<-ans$models
 ads<-ans$ads
