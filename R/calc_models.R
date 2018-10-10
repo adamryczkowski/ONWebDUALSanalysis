@@ -1,4 +1,4 @@
-calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=TRUE) {
+calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA) {
   library(caret)
   joined_df<-readRDS(system.file('db_no_duplicates.rds', package='ONWebDUALSanalysis'))
   ans<-select_variables_sep2018(joined_df)
@@ -11,23 +11,44 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=TRUE) 
     plik_name<-paste0(path_prefix, 'model_', dv_name, '_', model_name, '.rds')
     if(file.exists(plik_name)) {
       cat(paste0("Reading in already calculated model ", model_name, "...\n"))
-      readRDS(plik_name)
+      return(readRDS(plik_name))
     } else {
-      cat(paste0("Calculating model ", model_name, "...\n"))
-      tryCatch(
+      return(tryCatch(
         {
-          if(adaptive) {
-            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
+          if(is.na(adaptive)) {
+            cat(paste0("Trying adaptive train of model ", model_name, "...\n"))
+            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
+          } else if(adaptive) {
+            cat(paste0("Calculating adaptive train of model ", model_name, "...\n"))
+            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
           } else {
+            cat(paste0("Calculating non-adaptive train of model ", model_name, "...\n"))
             model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc)
           }
           saveRDS(model, plik_name)
-          model
+          return(model)
         },
         error=function(e) {
-          cat(paste0("Model ", model_name, " returned error: ", e$message, '\n'))
+          if(stringr::str_detect(e$message, stringr::fixed('For adaptive resampling, there needs to be more than one tuning parameter'))) {
+            cat(paste0("Adaptive train failed. Calculating non-adaptive train of model ", model_name, "...\n"))
+            return(tryCatch(
+              {
+                model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
+                saveRDS(model, plik_name)
+                return(model)
+              },
+              error=function(e) {
+                msg=paste0("Non-adaptive run of model ", model_name, " returned error: ", e$message)
+                cat(paste0(msg, '\n'))
+                return(msg)
+              }
+            ))
+          }
+          msg=paste0("Adaptive run of model ", model_name, " returned error: ", e$message)
+          cat(paste0(msg, '\n'))
+          return(msg)
         }
-      )
+      ))
     }
   }
 
@@ -38,20 +59,17 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=TRUE) 
   groupvar<-ads$iv56
   cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
 
-  if(adaptive) {
-    tc <- caret::trainControl(index = cvIndex,
-                              method = 'adaptive_cv',
-                              number = 10, repeats = 10,
-                              adaptive = list(min = 5, alpha = 0.05,
-                                              method = "gls", complete = TRUE),
-                              search = "random"
-    )
-  } else {
-    tc <- caret::trainControl(index = cvIndex,
-                              method = 'cv',
-                              number = 10, repeats = 10)
-  }
+  tc_adaptive <- caret::trainControl(index = cvIndex,
+                                     method = 'adaptive_cv',
+                                     number = 10, repeats = 10,
+                                     adaptive = list(min = 5, alpha = 0.05,
+                                                     method = "gls", complete = TRUE),
+                                     search = "random"
+  )
+  tc <- caret::trainControl(index = cvIndex,
+                            method = 'cv',
+                            number = 10, repeats = 10)
+  models=setNames(purrr::map(model_names, do_model_inner, ads=ads, tc=tc, dv_name=dv_name), model_names)
 
-
-  list(ads=ads, models=purrr::map(model_names, do_model_inner, ads=ads, tc=tc, dv_name=dv_name))
+  list(ads=ads, models=models)
 }

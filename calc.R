@@ -27,15 +27,16 @@ model_names=time_consuming_models
 model_names=c(all_models, c('mlpKerasDropout','M5', 'M5Rules'))
 model_names=all_models
 model_names=not_parallel
-model_names=c("earth", "enet", "BstLm", "glmnet", "RRF", "ctree2", "ranger", "RRFglobal", "rf", "cforest",
+model_names=c("nodeHarvest", "earth", "enet", "BstLm", "glmnet", "RRF", "ctree2", "ranger", "RRFglobal", "rf", "cforest",
               "evtree", "gbm", "spikeslab", "ctree", "lars", "lasso", "rpart2", "parRF",
               "cubist", "lars2", "rqnc", "rpart",
               "penalized", "msaenet", "rfRules", "qrf", "relaxo")
-ans<-calc_models(model_names, dv_nr=1)
+ans<-calc_models(model_names, dv_nr=5, adaptive = NA)
 
 ada_models<-ans$models
 ads<-ans$ads
-model_names=c("nodeHarvest", "bagEarthGCV",  "gcvEarth", "glmStepAIC","rpart1SE")
+model_names=c("bagEarthGCV",  "gcvEarth", "glmStepAIC","rpart1SE")
+ans<-calc_models(model_names, dv_nr=1, adaptive = FALSE)
 
 
 names(models)<-model_names
