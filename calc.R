@@ -1,5 +1,7 @@
-#devtools::install_github('adamryczkowski/ONWebDUALSimport')
+#devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
+library(doMC)
+registerDoMC()
 
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
@@ -25,14 +27,16 @@ model_names=time_consuming_models
 model_names=c(all_models, c('mlpKerasDropout','M5', 'M5Rules'))
 model_names=all_models
 model_names=not_parallel
-model_names=c("earth", "enet", "blasso", "BstLm", "glmnet", "RRF", "ctree2", "ranger", "RRFglobal", "rf", "cforest", "evtree", "gbm", "bagEarth", "spikeslab", "ctree", "nodeHarvest", "lars", "lasso", "rpart2", "parRF", "cubist", "lars2", "rqlasso", "bagEarthGCV", "rqnc", "rpart", "gcvEarth", "glmStepAIC", "penalized", "msaenet", "rpart1SE", "rfRules", "qrf", "relaxo")
+model_names=c("earth", "enet", "BstLm", "glmnet", "RRF", "ctree2", "ranger", "RRFglobal", "rf", "cforest",
+              "evtree", "gbm", "spikeslab", "ctree", "lars", "lasso", "rpart2", "parRF",
+              "cubist", "lars2", "rqnc", "rpart",
+              "penalized", "msaenet", "rfRules", "qrf", "relaxo")
+ans<-calc_models(model_names, dv_nr=1)
 
-
-
-ans<-calc_models(model_names, dv_nr=1, ncores=20)
-
-models<-ans$models
+ada_models<-ans$models
 ads<-ans$ads
+model_names=c("nodeHarvest", "bagEarthGCV",  "gcvEarth", "glmStepAIC","rpart1SE")
+
 
 names(models)<-model_names
 a<-purrr::map_dbl(models, function(x) {caret::getTrainPerf(x)$TrainRMSE} )
