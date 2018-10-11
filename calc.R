@@ -6,7 +6,7 @@ registerDoMC()
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
 #empty_models<-c('avNNet', 'ANFIS')
-really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD')
+really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD', 'leapSeq')
 
 empty_models<-character(0)
 tensor_flow<-c('mlpKerasDecay', 'mlpKerasDropout')
@@ -23,7 +23,8 @@ model_blacklist<-c('bag', 'bam', 'bartMachine', 'blackboost','bstSm', 'bstTree',
 
 all_models<-unique((caret::modelLookup() %>% filter(forReg==TRUE & ! model %in% model_blacklist))$model)
 models_that_hangs<-c('bartMachine', 'extraTrees')
-
+dubious_models<-setdiff(all_models, c(time_consuming_models, really_long,  models_that_hangs,
+                                      tensor_flow,not_parallel, mem_insufficient, models_with_broken_packages)  )
 model_names=time_consuming_models
 model_names=c(all_models, c('mlpKerasDropout','M5', 'M5Rules'))
 model_names=all_models
@@ -34,6 +35,7 @@ model_names=c("nodeHarvest", "earth", "enet", "BstLm", "glmnet", "RRF", "ctree2"
               "penalized", "msaenet", "rfRules", "qrf", "relaxo")
 ans<-calc_models(model_names, dv_nr=5, adaptive = NA)
 ans<-calc_models('gbm_h2o', dv_nr=5, adaptive = NA)
+ans<-calc_models(dubious_models, dv_nr=1, adaptive = NA)
 
 model_perfs<- function(ans) {
   valid_models<-which(!purrr::map_lgl(ans$models, is.character))

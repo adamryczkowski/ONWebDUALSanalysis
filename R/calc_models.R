@@ -1,4 +1,4 @@
-calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA) {
+calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, assume_calculated=FALSE) {
   library(caret)
   joined_df<-readRDS(system.file('db_no_duplicates.rds', package='ONWebDUALSanalysis'))
   ans<-select_variables_sep2018(joined_df)
@@ -13,42 +13,48 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA) {
       cat(paste0("Reading in already calculated model ", model_name, "...\n"))
       return(readRDS(plik_name))
     } else {
-      return(tryCatch(
-        {
-          if(is.na(adaptive)) {
-            cat(paste0("Trying adaptive train of model ", model_name, "...\n"))
-            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
-          } else if(adaptive) {
-            cat(paste0("Calculating adaptive train of model ", model_name, "...\n"))
-            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
-          } else {
-            cat(paste0("Calculating non-adaptive train of model ", model_name, "...\n"))
-            model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc)
+      if(assume_calculated) {
+        msg<-paste0("Model ", model_name, " is not computed, skipping it.")
+        cat(paste0(msg,'\n'))
+        return(msg)
+      } else {
+        return(tryCatch(
+          {
+            if(is.na(adaptive)) {
+              cat(paste0("Trying adaptive train of model ", model_name, "...\n"))
+              model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
+            } else if(adaptive) {
+              cat(paste0("Calculating adaptive train of model ", model_name, "...\n"))
+              model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc_adaptive, tuneLength=15)
+            } else {
+              cat(paste0("Calculating non-adaptive train of model ", model_name, "...\n"))
+              model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc)
+            }
+            saveRDS(model, plik_name)
+            return(model)
+          },
+          error=function(e) {
+            if(stringr::str_detect(e$message, stringr::fixed('For adaptive resampling, there needs to be more than one tuning parameter'))) {
+              cat(paste0("Adaptive train failed. Calculating non-adaptive train of model ", model_name, "...\n"))
+              return(tryCatch(
+                {
+                  model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
+                  saveRDS(model, plik_name)
+                  return(model)
+                },
+                error=function(e) {
+                  msg=paste0("Non-adaptive run of model ", model_name, " returned error: ", e$message)
+                  cat(paste0(msg, '\n'))
+                  return(msg)
+                }
+              ))
+            }
+            msg=paste0("Adaptive run of model ", model_name, " returned error: ", e$message)
+            cat(paste0(msg, '\n'))
+            return(msg)
           }
-          saveRDS(model, plik_name)
-          return(model)
-        },
-        error=function(e) {
-          if(stringr::str_detect(e$message, stringr::fixed('For adaptive resampling, there needs to be more than one tuning parameter'))) {
-            cat(paste0("Adaptive train failed. Calculating non-adaptive train of model ", model_name, "...\n"))
-            return(tryCatch(
-              {
-                model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
-                saveRDS(model, plik_name)
-                return(model)
-              },
-              error=function(e) {
-                msg=paste0("Non-adaptive run of model ", model_name, " returned error: ", e$message)
-                cat(paste0(msg, '\n'))
-                return(msg)
-              }
-            ))
-          }
-          msg=paste0("Adaptive run of model ", model_name, " returned error: ", e$message)
-          cat(paste0(msg, '\n'))
-          return(msg)
-        }
-      ))
+        ))
+      }
     }
   }
 
