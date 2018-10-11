@@ -84,7 +84,9 @@ select_variables_sep2018<-function(joined_df) {
   db[,iv35:=db$q_39]
   db[,iv36:=db$q_40]
   db[,iv37:=db$q_41]
-  db[,iv38:=db$q_42]
+  db[,iv38:=factor(db$q_42, levels = c(1,2), labels=c('Positive', 'Negative'))]
+  setattr(db$iv38, 'label', 'Postural instability - NURT')
+
   db[,iv39:=db$q_43]
   db[,iv40:=db$q_44]
 
