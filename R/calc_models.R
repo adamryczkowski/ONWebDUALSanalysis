@@ -66,14 +66,13 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
 
   groupvar<-ads$iv56
   cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
-
   tc_adaptive <- caret::trainControl(index = cvIndex,
                                      method = 'adaptive_cv',
                                      number = 10, repeats = 10,
                                      adaptive = list(min = 5, alpha = 0.05,
                                                      method = "gls", complete = TRUE),
                                      search = "random",
-                                     selectionFunction = oneSE(test, "RMSE", maximize = FALSE, num = 10)
+                                     selectionFunction = oneSE
   )
   tc <- caret::trainControl(index = cvIndex,
                             method = 'cv',
