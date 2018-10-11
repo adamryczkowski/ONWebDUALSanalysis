@@ -16,6 +16,7 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
       if(assume_calculated) {
         msg<-paste0("Model ", model_name, " is not computed, skipping it.")
         cat(paste0(msg,'\n'))
+        saveRDS(msg, plik_name)
         return(msg)
       } else {
         return(tryCatch(
@@ -47,12 +48,14 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
                 error=function(e) {
                   msg=paste0("Non-adaptive run of model ", model_name, " returned error: ", e$message)
                   cat(paste0(msg, '\n'))
+                  saveRDS(msg, plik_name)
                   return(msg)
                 }
               ))
             }
             msg=paste0("Adaptive run of model ", model_name, " returned error: ", e$message)
             cat(paste0(msg, '\n'))
+            saveRDS(msg, plik_name)
             return(msg)
           }
         ))
