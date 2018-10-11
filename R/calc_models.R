@@ -72,7 +72,7 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
                                      adaptive = list(min = 5, alpha = 0.05,
                                                      method = "gls", complete = TRUE),
                                      search = "random",
-                                     selectionFunction = oneSE
+                                     selectionFunction = caret::oneSE
   )
   tc <- caret::trainControl(index = cvIndex,
                             method = 'cv',
