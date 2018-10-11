@@ -10,40 +10,50 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
   do_model_inner<-function(dv_name, model_name, ads, tc) {
     plik_name<-paste0(path_prefix, 'model_', dv_name, '_', model_name, '.rds')
     if(file.exists(plik_name)) {
-      cat(paste0("Reading in already calculated model ", model_name, "...\n"))
-      return(readRDS(plik_name))
+      if (assume_calculated) {
+        cat(paste0("Reading in already calculated model ", model_name, "...\n"))
+        return(readRDS(plik_name))
+      } else {
+        msg<-paste0("Skipping already calculated model ", model_name)
+        cat(paste0(msg, "\n"))
+        return(msg)
+      }
     } else {
       if(assume_calculated) {
         msg<-paste0("Model ", model_name, " is not computed, skipping it.")
         cat(paste0(msg,'\n'))
-        saveRDS(msg, plik_name)
         return(msg)
       } else {
+        write.table(data.frame(), file=plik_name, col.names=FALSE)
         return(tryCatch(
           {
             if(is.na(adaptive)) {
-              cat(paste0("Trying adaptive train of model ", model_name, "...\n"))
+              msg<-paste0("Trying adaptive train of model ", model_name, "...")
+              cat(paste0(msg, "\n"))
               model<-caret::train(dv ~ ., data = ads, method = model_name,
                                   trControl = tc_adaptive, tuneLength=15)
             } else if(adaptive) {
-              cat(paste0("Calculating adaptive train of model ", model_name, "...\n"))
+              msg<-paste0("Calculating adaptive train of model ", model_name, "..")
+              cat(paste0(msg, "\n"))
               model<-caret::train(dv ~ ., data = ads, method = model_name,
                                   trControl = tc_adaptive, tuneLength=15)
             } else {
-              cat(paste0("Calculating non-adaptive train of model ", model_name, "...\n"))
+              msg<-paste0("Calculating non-adaptive train of model ", model_name, "...")
+              cat(paste0(msg, "\n"))
               model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc)
             }
             saveRDS(model, plik_name)
-            return(model)
+            return(msg)
           },
           error=function(e) {
             if(stringr::str_detect(e$message, stringr::fixed('For adaptive resampling, there needs to be more than one tuning parameter'))) {
-              cat(paste0("Adaptive train failed. Calculating non-adaptive train of model ", model_name, "...\n"))
+              msg<-paste0("Adaptive train failed. Calculating non-adaptive train of model ", model_name, "...")
+              cat(paste0(msg, "\n"))
               return(tryCatch(
                 {
                   model<-caret::train(dv ~ ., data = ads, method = model_name, trControl = tc, tuneLength=15)
                   saveRDS(model, plik_name)
-                  return(model)
+                  return(msg)
                 },
                 error=function(e) {
                   msg=paste0("Non-adaptive run of model ", model_name, " returned error: ", e$message)
@@ -62,7 +72,7 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
       }
     }
   }
-
+  #ads<-make_ads(dt, iv_names, dv_name, keep_nominal ='iv56')
   ads<-make_ads(dt, iv_names, dv_name, keep_nominal ='iv56')
 
   #  which(is.na(data.matrix(ads)),arr.ind = TRUE)

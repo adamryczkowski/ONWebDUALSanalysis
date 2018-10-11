@@ -39,32 +39,39 @@ ans<-calc_models('gbm_h2o', dv_nr=5, adaptive = NA)
 ans<-calc_models(dubious_models, dv_nr=1, adaptive = NA, assume_calculated = TRUE)
 ans<-calc_models(dubious_models, dv_nr=1, adaptive = NA, assume_calculated = FALSE)
 
+models<-ans$models
+ads<-ans$ads
 
 df<-model_perfs(ans)
-m<-models[[df$model[[2]]]]
+models<-models[df$model]
+m<-models[[df$model[[1]]]]
+m<-models$glmnet
 descr_model<-function(m) {
   tuned_pars<-setNames(m$finalModel$tuneValue, as.character(m$modelInfo$parameters$label))
   return(tuned_pars)
 }
 
-mod.cv<-glmnet::cv.glmnet(x = data.matrix(dplyr::select(tibble::as_tibble(ads), -dv)), y = ads$dv, family = 'gaussian',
-                          nfolds=16, parallel=4, standardize=TRUE)
-mod.cv<-glmnetUtils::cva.glmnet(x = data.matrix(dplyr::select(tibble::as_tibble(ads), -dv)), y = ads$dv, family = 'gaussian',
-                             nfolds=16, parallel=4, standardize=TRUE)
-mycoefs_1se<-broom::tidy(glmnet::coef.cv.glmnet(mod.cv, s = 'lambda.1se'))
-
-
-descr_model(m)
-
-descr_regr_model<-function(m) {
-  if(m$modelType!='Regression') {
-    return(NA)
+get_coefs<-function(m) {
+  if(m$maximize=='glmnet') {
+    ans<-list()
+    a<-coef(m$finalModel, m$bestTune$lambda)
+    ans$coefs<-setNames(attr(a, 'x'), attr(a, 'Dimnames')[[1]][1+attr(a, 'i')])
+    ans$rmse<-caret::RMSE(predict(m), ads$dv)
+    ans$train_rmse<-caret::getTrainPerf(m)$TrainRMSE
+    ans$r2<-caret::R2(predict(m), ads$dv)
+    ans$train_rsq<-caret::getTrainPerf(m)$TrainRsquared
+    ans$rmse<-caret::MAE(predict(m), ads$dv)
+    ans$train_mae<-caret::getTrainPerf(m)$TrainMAE
+    ans$cputime<-as.numeric(x$times$everything['user.self']) + as.numeric(x$times$everything['user.child'])
+    pred<-predict(m)
+    ans
   }
-  coef(m$finalModel)
 }
 
-a<-unclass(m$finalModel)
-
+comp_models<-function(models) {
+  r<-caret::resamples(models)
+  bwplot(r,metric="RMSE",main="GBM vs xgboost")
+}
 
 summary(res, metric='RMSE', decreasing = FALSE)
 bwplot(res, metric='RMSE', decreasing = TRUE)
@@ -79,47 +86,54 @@ ads_pred<-cbind(ads, dv_predict=predict(best_model))
 #ggplot2::qplot(dv, dv_predict, data = ads)
 
 
-min_point<-c(min(ads$dv), min(ads_pred$dv_predict))
-max_point<-c(max(ads$dv), max(ads_pred$dv_predict))
-
-min_dist<-((ads$dv - min_point[[1]])^2 + (ads_pred$dv_predict - min_point[[2]])^2)^0.5
-max_dist<-((ads$dv - max_point[[1]])^2 + (ads_pred$dv_predict - max_point[[2]])^2)^0.5
-
-ktory_quantil=0.05
-
-dvquantiles<-c(quantile(min_dist, probs = ktory_quantil),quantile(max_dist, probs = ktory_quantil))
-
-min_records<-which(min_dist<=dvquantiles[[1]])
-max_records<-which(max_dist<=dvquantiles[[2]])
 
 
-explainer<-DALEX::explain(best_model, data=ads, label=best_model_name)
 
-library(doParallel)
-registerDoParallel(cores=4)
 
-make_dalex_single_pred_df<-function(ads, records) {
-  rec_dalex<-foreach(rec_nr=records) %dopar%
-    DALEX::single_prediction(explainer, observation = ads[rec_nr,])
 
-  a<-unlist(purrr::map(rec_dalex, function(x) x$contribution))
-  dim(a)<-c(nrow(rec_dalex[[1]]), length(rec_dalex))
-  cum_min_dalex<-tibble(name=rec_dalex[[1]]$variable,
-                        mean_contr = plyr::aaply(a, 1, mean),
-                        sd_contr = plyr::aaply(a, 1, sd),
-                        min_contr = plyr::aaply(a, 1, min),
-                        max_contr = plyr::aaply(a, 1, max),
-                        med_contr = plyr::aaply(a, 1, median),
-                        q05_contr = plyr::aaply(a, 1, function(x) quantile(x, probs=0.05)),
-                        q95_contr = plyr::aaply(a, 1, function(x) quantile(x, probs=0.95))
-  )
-}
-
-min_dalex<-make_dalex_single_pred_df(ads, min_records)
-max_dalex<-make_dalex_single_pred_df(ads, max_records)
-
-class(min_dalex[[1]])
-m<-models$glmnet
-
-importance <- caret::varImp(best_model, scale=FALSE)
-
+# #Explanations
+#
+# min_point<-c(min(ads$dv), min(ads_pred$dv_predict))
+# max_point<-c(max(ads$dv), max(ads_pred$dv_predict))
+#
+# min_dist<-((ads$dv - min_point[[1]])^2 + (ads_pred$dv_predict - min_point[[2]])^2)^0.5
+# max_dist<-((ads$dv - max_point[[1]])^2 + (ads_pred$dv_predict - max_point[[2]])^2)^0.5
+#
+# ktory_quantil=0.05
+#
+# dvquantiles<-c(quantile(min_dist, probs = ktory_quantil),quantile(max_dist, probs = ktory_quantil))
+#
+# min_records<-which(min_dist<=dvquantiles[[1]])
+# max_records<-which(max_dist<=dvquantiles[[2]])
+#
+#
+# explainer<-DALEX::explain(best_model, data=ads, label=best_model_name)
+#
+# library(doParallel)
+# registerDoParallel(cores=4)
+#
+# make_dalex_single_pred_df<-function(ads, records) {
+#   rec_dalex<-foreach(rec_nr=records) %dopar%
+#     DALEX::single_prediction(explainer, observation = ads[rec_nr,])
+#
+#   a<-unlist(purrr::map(rec_dalex, function(x) x$contribution))
+#   dim(a)<-c(nrow(rec_dalex[[1]]), length(rec_dalex))
+#   cum_min_dalex<-tibble(name=rec_dalex[[1]]$variable,
+#                         mean_contr = plyr::aaply(a, 1, mean),
+#                         sd_contr = plyr::aaply(a, 1, sd),
+#                         min_contr = plyr::aaply(a, 1, min),
+#                         max_contr = plyr::aaply(a, 1, max),
+#                         med_contr = plyr::aaply(a, 1, median),
+#                         q05_contr = plyr::aaply(a, 1, function(x) quantile(x, probs=0.05)),
+#                         q95_contr = plyr::aaply(a, 1, function(x) quantile(x, probs=0.95))
+#   )
+# }
+#
+# min_dalex<-make_dalex_single_pred_df(ads, min_records)
+# max_dalex<-make_dalex_single_pred_df(ads, max_records)
+#
+# class(min_dalex[[1]])
+# m<-models$glmnet
+#
+# importance <- caret::varImp(best_model, scale=FALSE)
+#
