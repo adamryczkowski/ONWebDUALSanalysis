@@ -1,11 +1,11 @@
 #devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
 library(doMC)
-registerDoMC()
+registerDoMC(4)
 
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
-rather_long<-c('brnn', 'nodeHarvest')
+rather_long<-c('brnn', 'nodeHarvest', 'qrnn', 'rfRules')
 #empty_models<-c('avNNet', 'ANFIS')
 really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD', 'leapSeq')
 
@@ -41,11 +41,20 @@ ans<-calc_models(dubious_models, dv_nr=1, adaptive = NA, assume_calculated = FAL
 
 
 df<-model_perfs(ans)
-m<-models[[df$model[[5]]]]
+m<-models[[df$model[[2]]]]
 descr_model<-function(m) {
   tuned_pars<-setNames(m$finalModel$tuneValue, as.character(m$modelInfo$parameters$label))
   return(tuned_pars)
 }
+
+mod.cv<-glmnet::cv.glmnet(x = data.matrix(dplyr::select(tibble::as_tibble(ads), -dv)), y = ads$dv, family = 'gaussian',
+                          nfolds=16, parallel=4, standardize=TRUE)
+mod.cv<-glmnetUtils::cva.glmnet(x = data.matrix(dplyr::select(tibble::as_tibble(ads), -dv)), y = ads$dv, family = 'gaussian',
+                             nfolds=16, parallel=4, standardize=TRUE)
+mycoefs_1se<-broom::tidy(glmnet::coef.cv.glmnet(mod.cv, s = 'lambda.1se'))
+
+
+descr_model(m)
 
 descr_regr_model<-function(m) {
   if(m$modelType!='Regression') {
