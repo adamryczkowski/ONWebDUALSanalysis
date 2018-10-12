@@ -1,15 +1,9 @@
 #devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
 library(doMC)
-registerDoMC(12)
-dv_nrs<-c(1,6,2,3,4,5)
-for(dv_nr in dv_nrs) do_calc(dv_nr=dv_nr)
-
-
-
-rap_path<-paste0('raport/dv', dv_nr)
-dir.create(rap_path, recursive = TRUE)
+registerDoMC(16)
 debugonce(make_rap)
+dv_nr<-1
 make_rap(dv_nr = 1)
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
@@ -81,6 +75,17 @@ get_coefs<-function(m) {
     ans
   }
 }
+
+var_imp<-function(model, ads) {
+  cat(paste0(model$method, '\n'))
+  explainer<-DALEX::explain(model, data=ads %>% select(-dv), y=ads$dv)
+  dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "difference"),-label)
+  names(dfexp)<-c('variable', model$method)
+  dfexp
+}
+
+
+
 
 
 
