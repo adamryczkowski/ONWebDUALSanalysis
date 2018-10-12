@@ -116,12 +116,11 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
     groupvar<-ads[[keep_nominal]]
     cvIndex<-caret::createMultiFolds(groupvar, 10, times=10)
   } else {
-    cvIndex<-caret::createMultiFolds(y, times=10,  times = 10)
+    cvIndex<-caret::createMultiFolds(y, times=10,  k = 10)
   }
   selFun<-function(x, metric,  maximize) caret::oneSE(x=x, metric = metric, num=10, maximize = maximize)
   tc_adaptive <- caret::trainControl(index = cvIndex,
                                      method = 'adaptive_cv',
-                                     number = 10, repeats = 10,
                                      adaptive = list(min = 5, alpha = 0.05,
                                                      method = "gls", complete = TRUE),
                                      search = "random",
