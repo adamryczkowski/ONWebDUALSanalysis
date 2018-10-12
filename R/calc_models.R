@@ -1,4 +1,33 @@
-calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, assume_calculated=FALSE) {
+do_calc<-function(dv_nr, cache_path='models') {
+  registerDoMC(12)
+  time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
+  rather_long<-c('brnn', 'nodeHarvest', 'qrnn', 'rfRules')
+  #empty_models<-c('avNNet', 'ANFIS')
+  really_long<-c('DENFIS', 'FIR.DM', 'FS.HGD', 'leapSeq')
+
+  empty_models<-character(0)
+  tensor_flow<-c('mlpKerasDecay', 'mlpKerasDropout')
+  not_parallel<-c('M5', 'M5Rules')
+  mem_insufficient<-c('randomGLM')
+  models_with_broken_packages<-c('elm', 'mxnet', 'mxnetAdam', 'mlpSGD')
+  model_blacklist<-c('bag', 'bam', 'bartMachine', 'blackboost','bstSm', 'bstTree', 'elm', 'extraTrees',
+                     'gam', 'gamboost', 'gamLoess', 'gamSpline', 'gbm_h2o', 'GFS.THRIFT',
+                     'glmboost', 'glmnet_h2o', 'HYFIS', 'krlsRadial',
+                     'logicBag', 'logreg', 'mlpSGD', 'mxnet', 'mxnetAdam',
+                     'neuralnet', 'rlm', 'svmBoundrangeString', 'svmExpoString', 'svmSpectrumString',
+                     #   'xgbLinear',
+                     time_consuming_models, empty_models, not_parallel, tensor_flow, mem_insufficient)
+
+  all_models<-unique((caret::modelLookup() %>% filter(forReg==TRUE & ! model %in% model_blacklist))$model)
+  models_that_hangs<-c('bartMachine', 'extraTrees')
+  model_names<-setdiff(all_models, c(time_consuming_models, really_long, rather_long,  models_that_hangs,
+                                     tensor_flow,not_parallel, mem_insufficient, models_with_broken_packages)  )
+  #Reads all models for a given dv_nr
+  ans<-calc_models(model_names, dv_nr=dv_nr, adaptive = NA, assume_calculated = FALSE, path_prefix=paste0(cache_path, '/'))
+
+}
+
+calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, assume_calculated=FALSE, keep_nominal=character(0)) {
   library(caret)
   joined_df<-readRDS(system.file('db_no_duplicates.rds', package='ONWebDUALSanalysis'))
   ans<-select_variables_sep2018(joined_df)
@@ -73,12 +102,16 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
     }
   }
   #ads<-make_ads(dt, iv_names, dv_name, keep_nominal ='iv56')
-  ads<-make_ads(dt, iv_names, dv_name, keep_nominal ='iv56')
+  ads<-make_ads(dt, iv_names, dv_name, keep_nominal=keep_nominal)
 
   #  which(is.na(data.matrix(ads)),arr.ind = TRUE)
 
-  groupvar<-ads$iv56
-  cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
+  if(length(keep_nominal)>0) {
+    groupvar<-ads[[keep_nominal]]
+    cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
+  } else {
+    cvIndex<-NULL
+  }
   selFun<-function(x, metric,  maximize) caret::oneSE(x=x, metric = metric, num=10, maximize = maximize)
   tc_adaptive <- caret::trainControl(index = cvIndex,
                                      method = 'adaptive_cv',
@@ -139,20 +172,23 @@ model_perfs<- function(ans) {
 
   b5_grp<-fn(b5_grp, 'Linear Regression', 1)
   b5_grp<-fn(b5_grp, 'Relevance Vector Machines', 2)
-  b5_grp<-fn(b5_grp, 'Support Vector Machines', 3)
-  b5_grp<-fn(b5_grp, 'Gaussian Process',4)
-  b5_grp<-fn(b5_grp, 'Random Forest', 5)
-  b5_grp<-fn(b5_grp, 'Multivariate Adaptive Regression Splines', 6)
-  b5_grp<-fn(b5_grp, 'Tree-Based Model', 7)
-  b5_grp<-fn(b5_grp, 'Neural Network', 8)
-  b5_grp[is.na(b5_grp)]<-9
+  b5_grp<-fn(b5_grp, 'Support Vector Machines', 2)
+  b5_grp<-fn(b5_grp, 'Gaussian Process',3)
+  b5_grp<-fn(b5_grp, 'Random Forest', 4)
+  b5_grp<-fn(b5_grp, 'Multivariate Adaptive Regression Splines', 5)
+  b5_grp<-fn(b5_grp, 'Tree-Based Model', 4)
+  b5_grp<-fn(b5_grp, 'Neural Network', 6)
+  b5_grp[is.na(b5_grp)]<-7
 
 
 
   df<-dplyr::arrange(tibble(model=model_names, name=n1,  rmse=a1, rsq=a2, mae=a3, elapsed_time=b1, user_time=b2+b3,
                             is_nn=b4_1, is_bagging=b4_2, is_boost=b4_7,
                             is_rf=b4_3, is_lm=b4_4, is_bayes=b4_5, is_feature_sel=b4_6, modelType = b4_8, tags = b5,
-                            model_family=factor(b5_grp, levels=1:9, labels=c('LinReg', 'Relevance Vector Machines', 'SVM', 'Gaussian Process', 'RF', 'MARS', 'Tree', 'Neural Network', 'Other'))), rmse)
+                            model_family=factor(b5_grp, levels=sort(unique(b5_grp)), labels=c('Linear Regression', 'Support Vector Machines',
+                                                                             'Gaussian Process', 'Random Forest and trees',
+                                                                             'Multivariate Adaptive Regression Splines',
+                                                                             'Neural Network', 'Other'))), rmse)
 
   res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
   rmse_3rd<-res$statistics$RMSE[1,5] #3rd quantile of the best model's RMSE

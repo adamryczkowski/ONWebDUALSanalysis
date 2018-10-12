@@ -37,4 +37,6 @@ rsconnect/
 .Rproj.user
 
 models/*
+raport/*
+report/*
 *.rds

@@ -33,6 +33,7 @@ select_variables_sep2018<-function(joined_df) {
   setattr(db$iv57, 'label', 'Fenotype classification UMN/LMN')
 
   db[,dv1:=db$q_51_1.score]
+  setattr(db$dv1, 'label', "ALSFRS score")
   db[,dv2:=db$q_51_1.1 + db$q_51_1.2 + db$q_51_1.3]
   setattr(db$dv2, 'label', "ALSFRS Speech, Salivation and Swallowing")
   db[,dv3:=db$q_51_1.4 + db$q_51_1.5 + db$q_51_1.6]
@@ -42,6 +43,7 @@ select_variables_sep2018<-function(joined_df) {
   db[,dv5:=db$q_51_1.10 + db$q_51_1.11 + db$q_51_1.12]
   setattr(db$dv5, 'label', "ALSFRS Dyspnea, Orthopnea and Respiratory insufficiency")
   db[,dv6:=db$q_51_1.rate]
+  setattr(db$dv6, 'label', "ALSFRS rate")
 
   db[,iv7:=(as.numeric(db$q_11 - db$q_5)/365.25)]
   setattr(db$iv7, 'label', "Age at first symptoms")
@@ -304,6 +306,7 @@ prepare_variables_hybrid<-function(dt, iv_names, dv_name, keep_nominal=character
   mydt<-as.data.table(dt[!nas,iv_names])
   mydt<-danesurowe::copy_dt_attributes(dt, mydt)
   dv<-dv[!nas]
+  data.table::setattr(dv, 'label', Hmisc::label(dt[[dv_name]]))
 
   fobs<-purrr::map_dbl(iv_names, ~danesurowe::GetFOB(mydt[[.]], flag_recalculate_uniques = TRUE))
 
@@ -389,5 +392,8 @@ make_ads<-function(dt, iv_names, dv_name, keep_nominal=character(0)) {
   #   to_keep<-setdiff(colnames(ans$db), keep)
   #   ans$db<-cbind(ans$db[to_keep], setNames(data.frame(x=dt[keep]), keep))
   # }
-  cbind(data.frame(dv=depvar[!nas]), ans$db)
+  dvlab<-Hmisc::label(depvar)
+  depvar<-depvar[!nas]
+  data.table::setattr(depvar, 'label', dvlab)
+  cbind(data.frame(dv=depvar), ans$db)
 }
