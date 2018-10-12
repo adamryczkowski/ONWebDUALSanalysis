@@ -1,8 +1,10 @@
 #devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
 library(doMC)
-registerDoMC(4)
-
+registerDoMC(16)
+debugonce(make_rap)
+dv_nr<-1
+make_rap(dv_nr = 1)
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
 rather_long<-c('brnn', 'nodeHarvest', 'qrnn', 'rfRules')
@@ -74,16 +76,8 @@ get_coefs<-function(m) {
   }
 }
 
-var_imp<-function(model, ads) {
-  cat(paste0(model$method, '\n'))
-  explainer<-DALEX::explain(model, data=ads %>% select(-dv), y=ads$dv)
-  dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "difference"),-label)
-  names(dfexp)<-c('variable', model$method)
-  dfexp
-}
 
 
-var_imps<-purrr::map(models[setdiff(names(models), c('cforest'))], var_imp, ads=ads)
 
 comp_models<-function(models) {
   r<-caret::resamples(models)

@@ -118,10 +118,41 @@ model_perfs<- function(ans) {
   b4_6<-purrr::map_lgl(models, function(x) {'Implicit Feature Selection' %in% x$modelInfo$tags} )
   b4_7<-purrr::map_lgl(models, function(x) {'Boosting' %in% x$modelInfo$tags} )
   b4_8<-purrr::map_chr(models, function(x) {x$modelType} )
+  b5<-purrr::map(models, function(x) {list(setdiff(x$modelInfo$tags,
+                                                       c('Bagging', 'Implicit Feature Selection', 'Boosting')))} )
+
+  b5_grp<-rep(NA, length(b5))
+
+  fn<-function(b5_grp, tag, tag_level){
+    lgls<-which(purrr::map_lgl(b5, function(x) tag %in% x[[1]]))
+
+    tmp<-lgls[which(!is.na(b5_grp[lgls]))]
+    if(length(tmp)>0) {
+      for(i in tmp) {
+        cat(paste0("Model ", n1[[i]], "(",model_names[[i]],") is also of type ", b5_grp[[i]], ".\n"))
+      }
+    }
+    cat(paste0(length(lgls), " ", tag, "s\n"))
+    b5_grp[lgls]<-tag_level
+    return(b5_grp)
+  }
+
+  b5_grp<-fn(b5_grp, 'Linear Regression', 1)
+  b5_grp<-fn(b5_grp, 'Relevance Vector Machines', 2)
+  b5_grp<-fn(b5_grp, 'Support Vector Machines', 3)
+  b5_grp<-fn(b5_grp, 'Gaussian Process',4)
+  b5_grp<-fn(b5_grp, 'Random Forest', 5)
+  b5_grp<-fn(b5_grp, 'Multivariate Adaptive Regression Splines', 6)
+  b5_grp<-fn(b5_grp, 'Tree-Based Model', 7)
+  b5_grp<-fn(b5_grp, 'Neural Network', 8)
+  b5_grp[is.na(b5_grp)]<-9
+
+
 
   df<-dplyr::arrange(tibble(model=model_names, name=n1,  rmse=a1, rsq=a2, mae=a3, elapsed_time=b1, user_time=b2+b3,
                             is_nn=b4_1, is_bagging=b4_2, is_boost=b4_7,
-                            is_rf=b4_3, is_lm=b4_4, is_bayes=b4_5, is_feature_sel=b4_6, modelType = b4_8), rmse)
+                            is_rf=b4_3, is_lm=b4_4, is_bayes=b4_5, is_feature_sel=b4_6, modelType = b4_8, tags = b5,
+                            model_family=factor(b5_grp, levels=1:9, labels=c('LinReg', 'Relevance Vector Machines', 'SVM', 'Gaussian Process', 'RF', 'MARS', 'Tree', 'Neural Network', 'Other'))), rmse)
 
   res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
   rmse_3rd<-res$statistics$RMSE[1,5] #3rd quantile of the best model's RMSE
@@ -129,3 +160,4 @@ model_perfs<- function(ans) {
   cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
   return(dplyr::arrange(df[idx_ok,], rmse))
 }
+
