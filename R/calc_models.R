@@ -194,24 +194,28 @@ model_perfs<- function(ans) {
                                                                              'Gaussian Process', 'Random Forest and trees',
                                                                              'Multivariate Adaptive Regression Splines',
                                                                              'Neural Network', 'Other'))), rmse)
-  best_model<-df$model[[1]]
-  mem_size<-0
-  dftmp<-NULL
-  for(i in seq(2, length(df$model))) {
-    ms<-models[c(best_model, df$model[[i]])]
-    res<-summary(resamples(ms), metric='RMSE', decreasing=TRUE)
-    if(is.null(dftmp)) {
-      dftmp<-res$statistics$RMSE
-    } else {
-      dftmp<-rbind(dftmp, res$statistics$RMSE[2,])
-      rownames(dftmp)<-c(rownames(dftmp)[seq(1, nrow(dftmp)-1)], rownames(res$statistics$RMSE)[[2]])
-    }
-  }
-  res<-dftmp
-  #res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
-  rmse_3rd<-res[1,5] #3rd quantile of the best model's RMSE
-  idx_ok<-which(res[,2]<rmse_3rd) #Which models are not statistically worse then the best
-  cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
+  res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
+  rmse_3rd<-res$statistics$RMSE[1,5] #3rd quantile of the best model's RMSE
+  idx_ok<-which(res$statistics$RMSE[,2]<rmse_3rd) #Which models are not statistically worse then the best
+
+  # best_model<-df$model[[1]]
+  # mem_size<-0
+  # dftmp<-NULL
+  # for(i in seq(2, length(df$model))) {
+  #   ms<-models[c(best_model, df$model[[i]])]
+  #   res<-summary(resamples(ms), metric='RMSE', decreasing=TRUE)
+  #   if(is.null(dftmp)) {
+  #     dftmp<-res$statistics$RMSE
+  #   } else {
+  #     dftmp<-rbind(dftmp, res$statistics$RMSE[2,])
+  #     rownames(dftmp)<-c(rownames(dftmp)[seq(1, nrow(dftmp)-1)], rownames(res$statistics$RMSE)[[2]])
+  #   }
+  # }
+  # res<-dftmp
+  # #res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
+  # rmse_3rd<-res[1,5] #3rd quantile of the best model's RMSE
+  # idx_ok<-which(res[,2]<rmse_3rd) #Which models are not statistically worse then the best
+  # cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
   return(dplyr::arrange(df[idx_ok,], rmse))
 }
 
