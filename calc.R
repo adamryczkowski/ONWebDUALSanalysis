@@ -44,6 +44,12 @@ ads<-ans$ads
 
 df<-model_perfs(ans)
 models<-models[df$model]
+
+packages<-unlist(purrr::map(models, function(m) m$modelInfo$library ))
+new.packages <- packages[!(packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+
 m<-models[[df$model[[1]]]]
 m<-models$glmnet
 descr_model<-function(m) {
@@ -52,7 +58,7 @@ descr_model<-function(m) {
 }
 
 get_coefs<-function(m) {
-  if(m$maximize=='glmnet') {
+  if(m$method=='glmnet') {
     ans<-list()
     a<-coef(m$finalModel, m$bestTune$lambda)
     ans$coefs<-setNames(attr(a, 'x'), attr(a, 'Dimnames')[[1]][1+attr(a, 'i')])
@@ -62,11 +68,22 @@ get_coefs<-function(m) {
     ans$train_rsq<-caret::getTrainPerf(m)$TrainRsquared
     ans$rmse<-caret::MAE(predict(m), ads$dv)
     ans$train_mae<-caret::getTrainPerf(m)$TrainMAE
-    ans$cputime<-as.numeric(x$times$everything['user.self']) + as.numeric(x$times$everything['user.child'])
+    ans$cputime<-as.numeric(m$times$everything['user.self']) + as.numeric(m$times$everything['user.child'])
     pred<-predict(m)
     ans
   }
 }
+
+var_imp<-function(model, ads) {
+  cat(paste0(model$method, '\n'))
+  explainer<-DALEX::explain(model, data=ads %>% select(-dv), y=ads$dv)
+  dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "difference"),-label)
+  names(dfexp)<-c('variable', model$method)
+  dfexp
+}
+
+
+var_imps<-purrr::map(models[setdiff(names(models), c('cforest'))], var_imp, ads=ads)
 
 comp_models<-function(models) {
   r<-caret::resamples(models)
