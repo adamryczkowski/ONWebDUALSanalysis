@@ -1,9 +1,9 @@
 #devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
 library(doMC)
-registerDoMC(16)
-debugonce(make_rap)
+registerDoMC(4)
 dv_nr<-1
+debugonce(make_rap)
 make_rap(dv_nr = 1)
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
