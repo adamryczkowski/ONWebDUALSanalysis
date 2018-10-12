@@ -114,9 +114,9 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
 
   if(length(keep_nominal)>0) {
     groupvar<-ads[[keep_nominal]]
-    cvIndex<-caret::createMultiFolds(groupvar, 8, times=3)
+    cvIndex<-caret::createMultiFolds(groupvar, 10, times=1)
   } else {
-    cvIndex<-caret::createMultiFolds(ads$dv, times=8,  k = 3)
+    cvIndex<-caret::createMultiFolds(ads$dv, times=10,  k = 1)
   }
   selFun<-function(x, metric,  maximize) caret::oneSE(x=x, metric = metric, num=10, maximize = maximize)
   tc_adaptive <- caret::trainControl(index = cvIndex,
