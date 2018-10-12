@@ -40,8 +40,14 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
     plik_name<-paste0(path_prefix, 'model_', dv_name, '_', model_name, '.rds')
     if(file.exists(plik_name)) {
       if (assume_calculated) {
-        cat(paste0("Reading in already calculated model ", model_name, "...\n"))
-        return(readRDS(plik_name))
+        if(file.size(plik_name)>0) {
+          cat(paste0("Reading in already calculated model ", model_name, "...\n"))
+          return(readRDS(plik_name))
+        } else {
+          msg<-paste0("File ", plik_name, " is still being calculated")
+          cat(paste0(msg, "\n"))
+          return(msg)
+        }
       } else {
         msg<-paste0("Skipping already calculated model ", model_name)
         cat(paste0(msg, "\n"))
@@ -108,9 +114,9 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
 
   if(length(keep_nominal)>0) {
     groupvar<-ads[[keep_nominal]]
-    cvIndex<-caret::createFolds(groupvar, 10, returnTrain = T)
+    cvIndex<-caret::createMultiFolds(groupvar, 10, times=10)
   } else {
-    cvIndex<-NULL
+    cvIndex<-caret::createMultiFolds(y, times=10,  times = 10)
   }
   selFun<-function(x, metric,  maximize) caret::oneSE(x=x, metric = metric, num=10, maximize = maximize)
   tc_adaptive <- caret::trainControl(index = cvIndex,
