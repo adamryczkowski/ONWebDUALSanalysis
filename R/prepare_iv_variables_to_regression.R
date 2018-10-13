@@ -51,6 +51,18 @@ select_variables_sep2018<-function(joined_df) {
   src_vars=c('q_73', 'q_74', 'q_75', 'q_76', 'q_77', 'q_78', 'q_79', 'q_80', 'q_81', 'q_82', 'q_83', 'q_84')
   dst_vars=paste0('iv', seq(8, 7 + length(src_vars)))
 
+  setattr(db$q_73, 'label', "Blood hypertension")
+  setattr(db$q_74, 'label', "Diabetes – type I / II")
+  setattr(db$q_75, 'label', "Hypercholesterolemia")
+  setattr(db$q_76, 'label', "Hypertriglyceridemia")
+  setattr(db$q_77, 'label', "Hyperthyroidism")
+  setattr(db$q_78, 'label', "Hypothyroidism")
+  setattr(db$q_79, 'label', "Autoimmune rheumatologic disorder")
+  setattr(db$q_80, 'label', "Autoimmune intestinal disorder")
+  setattr(db$q_81, 'label', "Stroke")
+  setattr(db$q_82, 'label', "Heart – ischemia")
+  setattr(db$q_83, 'label', "Heart – arrhytmia")
+  setattr(db$q_84, 'label', "Heart – insufficiency")
   for(i in seq_along(src_vars)) {
     src_var=src_vars[[i]]
     dst_var=dst_vars[[i]]
@@ -64,51 +76,86 @@ select_variables_sep2018<-function(joined_df) {
   db[,iv20:=factor(flags, labels=c("No cancer", "Any cancer"), levels=c(FALSE,TRUE))]
   setattr(db$iv20, 'label', "Cancer")
 
-  db[,iv21:=db$q_138]
-  db[,iv22:=db$q_139]
-  db[,iv23:=factor(db$q_139=='Yes' | db$q_138 == 'Yes', labels=c('No', 'Yes'), levels=c(FALSE, TRUE))]
+  setattr(db$q_137, 'label', 'Emotional stress in the last 5 years')
+  db[,iv21:=db$q_137]
+  setattr(db$q_138, 'label', 'Emotional stress >5 years')
+  db[,iv22:=db$q_138]
+
+  db[,iv23:=factor(db$q_138=='Yes' | db$q_137 == 'Yes', labels=c('No', 'Yes'), levels=c(FALSE, TRUE))]
   setattr(db$iv23, 'label', 'Emotional stress')
 
 
+  setattr(db$q_20, 'label', 'Weight loss (>10% initial weight)')
   db[,iv24:=db$q_20]
+  setattr(db$q_21, 'label', 'Emotional lability at onset')
   db[,iv25:=db$q_21]
+  setattr(db$q_22, 'label', 'Which cognitive symptoms at onset')
   db[,iv26:=db$q_22]
+  setattr(db$q_23, 'label', 'Handedness')
   db[,iv27:=db$q_23]
+  setattr(db$q_37, 'label', 'Emotional lability')
   db[,iv28:=db$q_37]
+  setattr(db$q_38.1a, 'label', 'Resting tremor in Upper Limbs')
   db[,iv29:=db$q_38.1a]
+  setattr(db$q_38.1b, 'label', 'Resting tremor in Lower Limbs')
   db[,iv30:=db$q_38.1b]
+  setattr(db$q_23, 'label', 'Emotional lability')
   db[,iv31:=factor(db$q_38.1a=='Yes' | db$q_38.1b == 'Yes', labels=c('No', 'Yes'), levels=c(FALSE, TRUE))]
   setattr(db$iv31, 'label', 'Resting tremor')
+  setattr(db$q_38.2a, 'label', 'Bradykinesia in Upper Limbs')
   db[,iv32:=db$q_38.2a]
+  setattr(db$q_38.2b, 'label', 'Bradykinesia in Upper Limbs')
   db[,iv33:=db$q_38.2b]
   db[,iv34:=factor(db$q_38.2a=='Yes' | db$q_38.2b == 'Yes', labels=c('No', 'Yes'), levels=c(FALSE, TRUE))]
   setattr(db$iv34, 'label', 'Bradykinesia')
+  setattr(db$q_39, 'label', 'Sensory changes')
   db[,iv35:=db$q_39]
+  setattr(db$q_40, 'label', 'Apraxia (facial)')
   db[,iv36:=db$q_40]
+  setattr(db$q_41, 'label', 'Apraxia (upper limbs)')
   db[,iv37:=db$q_41]
   db[,iv38:=factor(db$q_42, levels = c(1,2), labels=c('Positive', 'Negative'))]
   setattr(db$iv38, 'label', 'Postural instability - NURT')
 
+  setattr(db$q_43, 'label', 'Broad-based gait')
   db[,iv39:=db$q_43]
+  setattr(db$q_44, 'label', 'Cognition - Qualitative evaluation')
   db[,iv40:=db$q_44]
 
+  setattr(db$q_89a, 'label', 'Psychiatric medication')
   db[,iv41:=db$q_89a]
+  setattr(db$q_90a, 'label', 'Supplements')
   db[,iv42:=db$q_90a]
+  setattr(db$q_91a, 'label', 'Riluzole')
   db[,iv43:=db$q_91a]
+  setattr(db$q_92a, 'label', 'Antiepileptc drug')
   db[,iv44:=db$q_92a]
+  setattr(db$q_93a, 'label', 'Statins')
   db[,iv45:=db$q_93a]
+  setattr(db$q_94a, 'label', 'NSAID')
   db[,iv46:=db$q_94a]
+  setattr(db$q_95a, 'label', 'Steroids')
   db[,iv47:=db$q_95a]
+  setattr(db$q_96a, 'label', 'Immunosupressors')
   db[,iv48:=db$q_96a]
 
+  setattr(db$q_100a_1, 'label', 'Familial history of ALS')
   db[,iv49:=db$q_100a_1]
   setattr(db$iv49, 'f.o.b', 1)
+
+  setattr(db$q_101a_1, 'label', 'Familial history of FTD')
   db[,iv50:=db$q_101a_1]
   setattr(db$iv50, 'f.o.b', 1)
+
+  setattr(db$q_102a_1, 'label', 'Familial history of Alzheimer disease')
   db[,iv51:=db$q_102a_1]
   setattr(db$iv51, 'f.o.b', 1)
+
+  setattr(db$q_103a_1, 'label', 'Familial history of Parkinson disease')
   db[,iv52:=db$q_103a_1]
   setattr(db$iv52, 'f.o.b', 1)
+
+  setattr(db$q_104a_1, 'label', 'Family history of multiple sclerosis')
   db[,iv53:=db$q_104a_1]
   setattr(db$iv53, 'f.o.b', 1)
 
@@ -189,6 +236,9 @@ regression_recode_factor_1<-function(varname, dt, keep_nominal=character(0)) {
   #as.integer(dt[[varname]])
   tmp_fac<-addNA(as.integer(dt[[varname]]), ifany=TRUE)
   mylabel<-attr(dt[[varname]], 'label')
+  if(is.null(mylabel)) {
+    browser()
+  }
   if(length(unique(tmp_fac))>1) {
     tmp_df<-setNames(tibble::tibble(tmp_fac), varname)
     tmp_df<-predict(caret::dummyVars(~ ., tmp_df, fullRank=FALSE, levelsOnly = FALSE, drop2nd=TRUE), tmp_df)

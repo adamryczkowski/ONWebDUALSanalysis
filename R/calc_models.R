@@ -197,17 +197,18 @@ model_perfs<- function(ans) {
 
   sub_df <- df %>% filter(b5_grp != "Linear Regression")
   models_to_get_metric<-c('glmnet', sub_df$model)
-  models_hard_to_compare<-c('rpart', 'rpart2', 'simpls', 'pls', 'lasso')
+  models_hard_to_compare<-c('lasso', 'pls', 'rpart', 'rpart2', 'simpls')
+  models_hard_to_compare<-c('bagEarth', 'blasso', 'earth', 'gcvEarth', 'kernelpls', 'lars2', 'lasso', 'pls', 'pcr', 'rpart', 'rpart2', 'simpls', 'spikeslab')
+  #models_hard_to_compare<-c('bagEarth', 'blasso', 'earth', 'gcvEarth', 'kernelpls', 'lars2', 'lasso', 'pls', 'rpart', 'rpart2', 'simpls', 'spikeslab')
   models_to_get_metric<-setdiff(sample(df$model), models_hard_to_compare)
-
 
   df_to_remove<- df %>% filter(model %in% models_hard_to_compare)
 
-  browser()
-  res_big<-summary(resamples(models[
-    c('rpart', 'rpart2', 'blasso', 'kernelpls')]), metric='RMSE', decreasing=TRUE)
-  c('gcvEarth', 'earth', 'rpart', 'rpart2', 'simpls', 'pls', 'lasso', 'blasso', 'kernelpls')
-  res_big<-summary(resamples(models[models_hard_to_compare[1:5]]), metric='RMSE', decreasing=TRUE)
+#  browser()
+  # res_big<-summary(resamples(models[
+  #   c('rpart', 'rpart2', 'blasso', 'kernelpls')]), metric='RMSE', decreasing=TRUE)
+  # c('gcvEarth', 'earth', 'rpart', 'rpart2', 'simpls', 'pls', 'lasso', 'blasso', 'kernelpls')
+  # res_big<-summary(resamples(models[models_hard_to_compare[1:4]]), metric='RMSE', decreasing=TRUE)
 
 
   # old_timing<-0
@@ -232,7 +233,7 @@ model_perfs<- function(ans) {
 
 #  res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
   rmse_3rd<-min(res$statistics$RMSE[,5]) #3rd quantile of the best model's RMSE
-  idx_ok<-which(res$statistics$RMSE[,2]<rmse_3rd) #Which models are not statistically worse then the best
+  idx_ok<-rownames(res$statistics$RMSE)[(res$statistics$RMSE[,2]<rmse_3rd)] #Which models are not statistically worse then the best
 
   # best_model<-df$model[[1]]
   # mem_size<-0
@@ -252,6 +253,11 @@ model_perfs<- function(ans) {
   # rmse_3rd<-res[1,5] #3rd quantile of the best model's RMSE
   # idx_ok<-which(res[,2]<rmse_3rd) #Which models are not statistically worse then the best
   cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
-  return(dplyr::arrange(df[idx_ok,], rmse))
+#  df<-dplyr::arrange(df[idx_ok,], rmse)
+  df<-dplyr::inner_join(df, tibble::tibble(model=idx_ok), by='model')
+  res<-caret::resamples(models[df$model])
+
+
+  return(list(df=df, resamples=res))
 }
 

@@ -27,9 +27,10 @@ make_rap<-function(dv_nr, rap_path) {
   models<-ans$models
   adf<-ans$ads
 
-
   #Gathers all metadata for models
-  df<-model_perfs(ans)
+  ans<-model_perfs(ans)
+  df<-ans$df
+  res<-ans$resamples
 
   #Filters models that are much worse
   models<-models[df$model]
@@ -40,21 +41,25 @@ make_rap<-function(dv_nr, rap_path) {
   if(length(new.packages)) install.packages(new.packages)
 
   #Show all models' performance
-  comp_models<-function(models, df) {
-    r<-caret::resamples(models)
+  comp_models<-function(models, df, res) {
     o<-order(names(models))
 
     model_family_colors<-RColorBrewer::brewer.pal(name="Dark2", n = length(unique(df$model_family)))
-    a<-ggplot(r,metric="RMSE",main="GBM vs xgboost")
-    a$data<-cbind(a$data, model_family = df$model_family, model_family_colors = model_family_colors[as.integer(df$model_family)])
-    a + aes(color=model_family) + scale_color_manual(values = model_family_colors)+ labs(color = "Model family") +
-      ylab(paste0("RMSE of predicting ", Hmisc::label(adf$dv), " (less is better)")) +
-      theme(axis.text.y = element_text(colour=model_family_colors[as.integer(df$model_family)][order(a$data$Estimate)]))
-
+    a<-ggplot(res,metric="RMSE",main="GBM vs xgboost", statistic = 'IR')
+    #df2<-dplyr::arrange(df, model)
+    df2<-suppressWarnings(dplyr::full_join(a$data, df, by=c("Model"="model")))
+    a$data<-dplyr::arrange(cbind(df2[c(names(a$data), 'model_family')], model_family_colors = model_family_colors[as.integer(df2$model_family)]), Estimate)
+    a$data$Model<-factor(a$data$Model, levels=a$data$Model[order(a$data$Estimate)])
+    g<-a + aes(color=model_family) + scale_color_manual(values = model_family_colors)+ labs(color = "Model family") +
+      ylab(paste0("Interquartile range of RMSE of predicting ", Hmisc::label(adf$dv), " (less is better)")) +
+      theme(axis.text.y = element_text(colour=model_family_colors[as.integer(a$data$model_family)][order(a$data$Estimate)]))
+    g
   }
-  plot<-comp_models(models, df)
-  ggsave(filename=paste0('all_models_perf_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
-  ggsave(filename=paste0('all_models_perf_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+  if(!file.exists(paste0(rap_path, '/all_models_perf_', dv_nr, '.png'))) {
+    plot<-comp_models(models, df, res)
+    ggsave(filename=paste0('all_models_perf_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('all_models_perf_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+  }
 
   #Gather variable importance statistics
   if(file.exists(paste0('tmp_comp_imps_', dv_nr, '.rds'))) {
@@ -81,37 +86,43 @@ make_rap<-function(dv_nr, rap_path) {
     comb_weights_cnt<-comb_weights_cnt - min(comb_weights_cnt)
 
     if(flag_variables) {
-      labels<-Hmisc::label(df_comb)[2:length(df_comb)]
-    } else {
-      pos<-which(purrr::map_int(as.character(tmpdf1$variable), function(x) which(colnames(adf)  %in% x )))
+      pos<-purrr::map_int(as.character(tmpdf1$variable), function(x) which(colnames(adf)  %in% x ))
       labels<-Hmisc::label(adf)[pos]
+      names<-as.character(tmpdf1$variable)
+    } else {
+      labels<-Hmisc::label(df_comb)[2:length(df_comb)]
+      names<-colnames(df_comb)[2:length(df_comb)]
     }
 
     mds_comb<-cbind(as.data.frame(cmdscale(comb_dists)),
                     weight=comb_weights, weight_sd=comb_weights_sd, weight_cnt=comb_weights_cnt,
-                    label=labels ) %>% arrange(-comb_weights_cnt)
+                    label=labels, name=names ) %>% arrange(-comb_weights_cnt)
     plot1 <- ggplot(mds_comb, aes(V1, V2, label=label, size=weight_cnt)) +
       geom_point(colour="blue", alpha=0.2) +
       scale_size('weight_cnt')+
       ggrepel::geom_text_repel(colour="black", size=2.5,
                       hjust = "center", vjust = "bottom", nudge_x = 0, nudge_y = 0.025) +
-      labs(x="", y="") + theme_bw()
+      labs(x="", y="", size="Number of predictors") + theme_bw()
 
     plot1
   }
 
-  a<-which(colnames(comb_imps) %in% (df %>% dplyr::filter(model_family=='Linear Regression'))$model)
-  df_comb<-comb_imps[,c(1,a)]
-  mds_from_varimps(df_comb, df = df, flag_variables = TRUE)
+  if(!file.exists(paste0(rap_path, '/all_models_vars_mds_', dv_nr, '.png'))) {
+    a<-which(colnames(comb_imps) %in% (df %>% dplyr::filter(model_family=='Linear Regression'))$model)
+    df_comb<-comb_imps[,c(1,a)]
+    plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = TRUE)
+    ggsave(filename=paste0('all_models_vars_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('all_models_vars_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+    plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = FALSE)
+    ggsave(filename=paste0('all_models_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('all_models_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+  }
+  browser()
+
+
 
 #  dplyr::full_join(comb_imps  colnames(comb_imps)
 
-  summary(res, metric='RMSE', decreasing = FALSE)
-  bwplot(res, metric='RMSE', decreasing = TRUE)
-  dotplot(res)
-
-  best_model_name<-df$model[[1]]
-  best_model<-models[[ best_model_name ]]
   glmnet_model<-models[['glmnet']]
 
   ads_pred<-cbind(ads, dv_predict=predict(best_model))

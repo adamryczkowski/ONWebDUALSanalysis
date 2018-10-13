@@ -4,7 +4,7 @@ library(doMC)
 registerDoMC(4)
 dv_nr<-1
 #debugonce(make_rap)
-make_rap(dv_nr = 1)
+make_rap(dv_nr = 1, rap_path = 'reports')
 
 time_consuming_models<-c('ANFIS', 'DENFIS', 'FIR.DM', 'FS.HGD', 'GFS.FR.MOGUL', 'GFS.LT.RS', 'HYFIS', 'Rborist', 'xgbDART', 'xgbLinear', 'xgbTree')
 rather_long<-c('brnn', 'nodeHarvest', 'qrnn', 'rfRules')
