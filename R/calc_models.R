@@ -114,9 +114,9 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
 
   if(length(keep_nominal)>0) {
     groupvar<-ads[[keep_nominal]]
-    cvIndex<-caret::createMultiFolds(groupvar, 10, times=1)
+    cvIndex<-caret::createMultiFolds(groupvar, k = 10, times=10)
   } else {
-    cvIndex<-caret::createMultiFolds(ads$dv, times=10,  k = 1)
+    cvIndex<-caret::createMultiFolds(ads$dv, times=10,  k = 10)
   }
   selFun<-function(x, metric,  maximize) caret::oneSE(x=x, metric = metric, num=10, maximize = maximize)
   tc_adaptive <- caret::trainControl(index = cvIndex,
@@ -194,8 +194,44 @@ model_perfs<- function(ans) {
                                                                              'Gaussian Process', 'Random Forest and trees',
                                                                              'Multivariate Adaptive Regression Splines',
                                                                              'Neural Network', 'Other'))), rmse)
-  res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
-  rmse_3rd<-res$statistics$RMSE[1,5] #3rd quantile of the best model's RMSE
+
+  sub_df <- df %>% filter(b5_grp != "Linear Regression")
+  models_to_get_metric<-c('glmnet', sub_df$model)
+  models_hard_to_compare<-c('rpart', 'rpart2', 'simpls', 'pls', 'lasso')
+  models_to_get_metric<-setdiff(sample(df$model), models_hard_to_compare)
+
+
+  df_to_remove<- df %>% filter(model %in% models_hard_to_compare)
+
+  browser()
+  res_big<-summary(resamples(models[
+    c('rpart', 'rpart2', 'blasso', 'kernelpls')]), metric='RMSE', decreasing=TRUE)
+  c('gcvEarth', 'earth', 'rpart', 'rpart2', 'simpls', 'pls', 'lasso', 'blasso', 'kernelpls')
+  res_big<-summary(resamples(models[models_hard_to_compare[1:5]]), metric='RMSE', decreasing=TRUE)
+
+
+  # old_timing<-0
+  # old_size<-0
+  # for(i in seq(2, length(models_to_get_metric))) {
+  #   subsecik<-models_to_get_metric[seq(1, i)]
+  #   cat(paste0("Trying adding ", length(subsecik), "th model ", subsecik[[i]], " of size ", utils:::format.object_size(object.size(models[[i]]), "auto"), "\n"))
+  #   ts<-system.time(res<-summary(resamples(models[subsecik]), metric='RMSE', decreasing=TRUE))
+  #   new_timing<-ts[['elapsed']]
+  #   new_size<-object.size(res)
+  #   cat(paste0("Elapsed time: ", round(new_timing), " which is ", round(100*(new_timing-old_timing)/(length(subsecik)-1))/100, " sec per sample.\n"))
+  #   cat(paste0("Extra object size time: ", gdata::humanReadable(new_size - old_size),
+  #              " which is ", gdata::humanReadable(round((new_size-old_size)/(length(subsecik)-1))), " per sample.\n\n"))
+  #   old_timing<-new_timing
+  #   old_size<-new_size
+  # }
+
+
+  res<-summary(resamples(models[models_to_get_metric]), metric='RMSE', decreasing=TRUE)
+
+
+
+#  res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
+  rmse_3rd<-min(res$statistics$RMSE[,5]) #3rd quantile of the best model's RMSE
   idx_ok<-which(res$statistics$RMSE[,2]<rmse_3rd) #Which models are not statistically worse then the best
 
   # best_model<-df$model[[1]]
@@ -215,7 +251,7 @@ model_perfs<- function(ans) {
   # #res<-summary(resamples(models[df$model]), metric='RMSE', decreasing=TRUE)
   # rmse_3rd<-res[1,5] #3rd quantile of the best model's RMSE
   # idx_ok<-which(res[,2]<rmse_3rd) #Which models are not statistically worse then the best
-  # cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
+  cat(paste0("Discarded ", nrow(df)-length(idx_ok), " models that are not as good as the best model\n"))
   return(dplyr::arrange(df[idx_ok,], rmse))
 }
 

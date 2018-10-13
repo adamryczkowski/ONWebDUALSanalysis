@@ -22,7 +22,8 @@ Imports:
   caret,
   mice,
   DALEX,
-  svglite
+  svglite,
+  gdata
 Depends:
   data.table,
   danesurowe,
