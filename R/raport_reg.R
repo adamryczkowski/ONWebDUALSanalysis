@@ -146,6 +146,28 @@ make_rap<-function(dv_nr, rap_path) {
 
   glmnet_model<-models[['glmnet']]
 
+  m<-glmnet_model
+  dv<-adf$dv
+  ans<-list()
+  a<-coef(m$finalModel, m$bestTune$lambda)
+  ans$coefs<-setNames(attr(a, 'x'), attr(a, 'Dimnames')[[1]][1+attr(a, 'i')])
+  ans$rmse<-caret::RMSE(predict(m), dv)
+  ans$train_rmse<-caret::getTrainPerf(m)$TrainRMSE
+  ans$r2<-caret::R2(predict(m), dv)
+  ans$train_rsq<-caret::getTrainPerf(m)$TrainRsquared
+  ans$rmse<-caret::MAE(predict(m), dv)
+  ans$train_mae<-caret::getTrainPerf(m)$TrainMAE
+  ans$cputime<-as.numeric(m$times$everything['user.self']) + as.numeric(m$times$everything['user.child'])
+  pred<-predict(m)
+
+  glmnet_imps<-tibble(importances=comb_imps[['glmnet']], variable=comb_imps$variable)
+
+  dplyr::arrange(dplyr::left_join(tibble(variable=names(ans$coefs), coef=as.numeric(ans$coefs)), glmnet_imps, by='variable'), -importances)
+
+  ans
+
+
+  a<-get_coefs(glmnet_model)
   ads_pred<-cbind(ads, dv_predict=predict(best_model))
 
 }
