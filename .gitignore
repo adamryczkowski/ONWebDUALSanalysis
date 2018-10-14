@@ -38,4 +38,5 @@ rsconnect/
 
 models/*
 reports/*
+raport/*
 *.rds

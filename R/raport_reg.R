@@ -117,6 +117,27 @@ make_rap<-function(dv_nr, rap_path) {
     ggsave(filename=paste0('all_models_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
     ggsave(filename=paste0('all_models_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
   }
+
+  if(!file.exists(paste0(rap_path, '/all_models_vars_importances_', dv_nr, '.png'))) {
+    sort_order<-setNames(plyr::aaply(data.matrix(comb_imps[purrr::map_lgl(comb_imps, is_double)]), 1, mean), comb_imps$variable)
+    sort_order<-sort_order[! names(sort_order) %in% c('_baseline_', '_full_model_') ]
+
+    plotdf<-tidyr::gather(comb_imps, model,  varimp, -c(varlabel, variable))
+
+    plotdf<-dplyr::inner_join(plotdf, tibble(variable=names(sort_order), sort_value=sort_order), by='variable')
+
+    valid_rows<-!plotdf$variable %in% c('_baseline_', '_full_model_')
+    plotdf<-plotdf[valid_rows,]
+
+    #plotdf$variable<-factor(plotdf$variable, )
+    var_imp_plot<-ggplot(data = plotdf, aes(x=reorder(varlabel, sort_value), varimp)) + geom_boxplot() + coord_flip() +
+      ylab(label = "Variable importance across all models") +
+      xlab(label = NULL) + theme(aspect.ratio=2/1) +
+      theme(text = element_text(size=8))
+    ggsave(filename=paste0('all_models_vars_importances_', dv_nr, '.png'), plot=var_imp_plot, device='png', path=rap_path)
+    ggsave(filename=paste0('all_models_vars_importances_', dv_nr, '.svg'), plot=var_imp_plot, device='svg', path=rap_path)
+  }
+
   browser()
 
 

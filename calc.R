@@ -1,7 +1,7 @@
 #devtools::install_github('adamryczkowski/ONWebDUALSanalysis')
 library(ONWebDUALSanalysis)
 library(doMC)
-registerDoMC(4)
+registerDoMC(8)
 dv_nr<-1
 #debugonce(make_rap)
 make_rap(dv_nr = 1, rap_path = 'reports')

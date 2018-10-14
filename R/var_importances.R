@@ -22,6 +22,15 @@ gather_variable_importances<-function(models, adf, df) {
     lab<-df$name[[lab_idx]]
     data.table::setattr(comb_imps[[i]], 'label', lab)
   }
+
+  da<-data.matrix(comb_imps[seq(2, ncol(comb_imps))])
+  zero_models<-c(1, 1+which(abs(plyr::aaply(da, 2, function(x) sum(x^2) )-0)>1.0E-10))
+  comb_imps<-comb_imps[zero_models]
+
+  comb_imps$variable<-as.character(comb_imps$variable)
+
+  comb_imps<-dplyr::right_join(tibble(variable=colnames(adf), varlabel=Hmisc::label(adf) ), comb_imps, by='variable')
+
   return(comb_imps)
 }
 
