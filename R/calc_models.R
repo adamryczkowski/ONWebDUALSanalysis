@@ -108,7 +108,7 @@ calc_models<-function(model_names, dv_nr, path_prefix='models/', adaptive=NA, as
     }
   }
   #ads<-make_ads(dt, iv_names, dv_name, keep_nominal ='iv56')
-  ads<-make_ads(dt, iv_names, dv_name, keep_nominal=keep_nominal)
+  ads<-make_ads(dt, c(iv_names, 'dv3'), dv_name, keep_nominal=keep_nominal)
 
   #  which(is.na(data.matrix(ads)),arr.ind = TRUE)
 

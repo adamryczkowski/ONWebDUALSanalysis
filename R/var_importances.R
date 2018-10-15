@@ -3,7 +3,7 @@ gather_variable_importances<-function(models, adf, df) {
   var_imp<-function(model, adf) {
     cat(paste0(model$method, '\n'))
     explainer<-DALEX::explain(model, data=adf %>% select(-dv), y=adf$dv)
-    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "difference"),-label)
+    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "raw"),-label)
     names(dfexp)<-c('variable', model$method)
     dfexp
   }
@@ -15,7 +15,6 @@ gather_variable_importances<-function(models, adf, df) {
   comb_imps<-reduce(var_imps, function(imps1, imps2) {
     dplyr::full_join(imps1, imps2, by = 'variable')
   })
-
 
   for(i in seq(2, ncol(comb_imps))) {
     lab_idx<-which(df$model == colnames(comb_imps)[[i]])
