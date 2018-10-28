@@ -111,11 +111,21 @@ make_rap<-function(dv_nr, rap_path) {
     a<-which(colnames(comb_imps) %in% (df %>% dplyr::filter(model_family=='Linear Regression'))$model)
     df_comb<-comb_imps[,c(1,a)]
     plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = TRUE)
+    ggsave(filename=paste0('reg_models_vars_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('reg_models_vars_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+    plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = FALSE)
+    ggsave(filename=paste0('reg_models_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('reg_models_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+
+    a<-which(colnames(comb_imps) %in% df$model)
+    df_comb<-comb_imps[,c(1,a)]
+    plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = TRUE)
     ggsave(filename=paste0('all_models_vars_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
     ggsave(filename=paste0('all_models_vars_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
     plot<-mds_from_varimps(df_comb, df = df, adf = adf, flag_variables = FALSE)
     ggsave(filename=paste0('all_models_mds_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
     ggsave(filename=paste0('all_models_mds_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+
   }
 
   if(!file.exists(paste0(rap_path, '/all_models_vars_importances_', dv_nr, '.png'))) {
@@ -128,118 +138,43 @@ make_rap<-function(dv_nr, rap_path) {
 
     valid_rows<-!plotdf$variable %in% c('_baseline_', '_full_model_')
     plotdf<-plotdf[valid_rows,]
+    valid_models<-!plotdf$model %in% c('mlpML')
+    plotdf<-plotdf[valid_models,]
 
     #plotdf$variable<-factor(plotdf$variable, )
-    var_imp_plot<-ggplot(data = plotdf, aes(x=reorder(varlabel, sort_value), varimp)) + geom_boxplot() + coord_flip() +
+    var_imp_plot<-ggplot(data = plotdf, aes(x=reorder(varlabel, sort_value), varimp-1)) + geom_boxplot() + coord_flip() +
       ylab(label = "Variable importance across all models") +
       xlab(label = NULL) + theme(aspect.ratio=2/1) +
-      theme(text = element_text(size=8))
+      theme(text = element_text(size=8)) +
+      scale_y_continuous(labels = scales::percent_format(accuracy=1))
+
+#     var_imp_plot<-ggplot(data = plotdf, aes(x=reorder(model, sort_value), varimp)) + geom_boxplot() + coord_flip() +
+#       ylab(label = "Variable importance across all variables") +
+#       xlab(label = NULL) + theme(aspect.ratio=2/1) +
+#       theme(text = element_text(size=8))
+
     ggsave(filename=paste0('all_models_vars_importances_', dv_nr, '.png'), plot=var_imp_plot, device='png', path=rap_path)
     ggsave(filename=paste0('all_models_vars_importances_', dv_nr, '.svg'), plot=var_imp_plot, device='svg', path=rap_path)
   }
-
-  browser()
-
-
 
 #  dplyr::full_join(comb_imps  colnames(comb_imps)
 
   glmnet_model<-models[['glmnet']]
 
-  m<-glmnet_model
-  dv<-adf$dv
-  ans<-list()
-  a<-coef(m$finalModel, m$bestTune$lambda)
-  ans$coefs<-setNames(attr(a, 'x'), attr(a, 'Dimnames')[[1]][1+attr(a, 'i')])
-  ans$rmse<-caret::RMSE(predict(m), dv)
-  ans$train_rmse<-caret::getTrainPerf(m)$TrainRMSE
-  ans$r2<-caret::R2(predict(m), dv)
-  ans$train_rsq<-caret::getTrainPerf(m)$TrainRsquared
-  ans$rmse<-caret::MAE(predict(m), dv)
-  ans$train_mae<-caret::getTrainPerf(m)$TrainMAE
-  ans$cputime<-as.numeric(m$times$everything['user.self']) + as.numeric(m$times$everything['user.child'])
-  ans$pred<-predict(m)
-
-
-  browser()
-  glmnet_baseline<-comb_imps[['glmnet']][[which(comb_imps$variable=='_baseline_')]]
-  glmnet_fullmodel<-comb_imps[['glmnet']][[which(comb_imps$variable=='_full_model_')]]
-  glmnet_imps<-tibble(importances=(comb_imps[['glmnet']]-glmnet_fullmodel)/(glmnet_baseline-glmnet_fullmodel), variable=comb_imps$variable)
-
-  ans$coefs<-dplyr::arrange(dplyr::left_join(tibble(variable=names(ans$coefs), coef=as.numeric(ans$coefs)), glmnet_imps, by='variable'), -importances)
-  ans$coefs<-dplyr::left_join(ans$coefs, tibble(variable=colnames(adf), varlabel=Hmisc::label(adf)), by='variable')
-  ans$coefs$varlabel <- factor(ans$coefs$varlabel, levels=ans$coefs$varlabel[order(ans$coefs$importances)])
-
-  ans
-
-  plotdf<-ans$coefs %>% filter(variable !='(Intercept)')
-
-  max(plotdf$importances)
-
-  glmnet_plot<-ggplot2::ggplot(data = plotdf, aes(x=varlabel, y=importances)) +
-    ggplot2::geom_bar(stat="identity") + coord_flip() +
-    geom_text(aes(label=scales::comma_format(accuracy=0.001)(plotdf$coef),
-                  hjust=ifelse(importances>max(plotdf$importances)*0.3,1.1,ifelse(importances>0, -0.1, -1)),
-                  colour = ifelse(importances>max(plotdf$importances)*0.3,"black","white")
-                  ),
-
-              ) +
-    guides(colour=FALSE)+
-    scale_colour_manual(values=c("#FFFFFF", "#000000")) +
-    scale_y_continuous(labels = scales::percent)
-    ylab("Regression coefficients sorted by importances\nfor model LASSO (glmnet)") +
-    xlab(NULL)
-
-  a<-get_coefs(glmnet_model)
-  ads_pred<-cbind(ads, dv_predict=predict(best_model))
-
+  if(!file.exists(paste0(rap_path, '/glmnet_coefs_', dv_nr, '.png'))) {
+    ans<-plot_coefs(glmnet_model, adf = adf)
+    plot<-ans$plot
+    ggsave(filename=paste0('glmnet_coefs_', dv_nr, '.png'), plot=plot, device='png', path=rap_path)
+    ggsave(filename=paste0('glmnet_coefs_', dv_nr, '.svg'), plot=plot, device='svg', path=rap_path)
+    report<-paste0("LASSO regression for ", Hmisc::label(adf$dv), " was fitted by minimizing the RMSE statistic. ",
+                   "The average RMSE statistic calculated in the Testing Set obtained in ten times repeated ten-fold cross validation eqauls ", ans$stats$train_rmse, ". ",
+                   "(The same statistic calculated on the full data set is equal ", ans$stats$rmse, ", but may be overly optimistic.\n",
+                   "Average R squared calculated on the Testing Set equals ", ans$stats$train_rsq, " (", ans$stats$r2, " on the full data set).\n",
+                   "Calculation of this model took ", ans$stats$cputime, " seconds")
+    fileConn<-file(paste0(rap_path, '/glmnet_coefs_', dv_nr, '.txt'))
+    writeLines(report, fileConn)
+    xlsx::write.xlsx2(ans$df, paste0(rap_path, '/glmnet_coefs_', dv_nr, '.xlsx'), sheetName="coef & importances")
+  }
 }
 
 
-gather_detailed_variable_importances<-function(model, adf, df, how_many_resamples=100) {
-  var_imp<-function(model, adf, nr) {
-    explainer<-DALEX::explain(model, data=adf %>% select(-dv), y=adf$dv)
-    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "raw"),-label)
-    names(dfexp)<-c('variable', paste0('var_', nr))
-    dfexp
-  }
-
-  var_imps<-foreach(nr = seq(how_many_resamples)) %dopar%
-    var_imp(model=model,  adf=adf, nr=nr)
-
-  comb_imps<-reduce(var_imps, function(imps1, imps2) {
-    dplyr::full_join(imps1, imps2, by = 'variable')
-  })
-
-  a<-data.matrix(comb_imps[,seq(2, ncol(comb_imps))])
-  fullmodels<-a[,1]
-  baselines<-a[,nrow(a)]
-
-  a2<-t(t(a - fullmodels)/(baselines - fullmodels))
-
-  ans<-tibble(variable=as.character(comb_imps[[1]]),
-              m_importance=plyr::aaply(a2,1,mean),
-              sd_importance=plyr::aaply(a2,1,sd),
-              md_importance=plyr::aaply(a2,1,median),
-              q05_importance=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.05)),
-              q95_importance=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.95))
-  )
-
-  ans<-dplyr::arrange(dplyr::right_join(tibble(variable=colnames(adf), varlabel=Hmisc::label(adf)), ans, by='variable'), -m_importance)
-
-  for(i in seq(2, ncol(comb_imps))) {
-    lab_idx<-which(df$model == colnames(comb_imps)[[i]])
-    lab<-df$name[[lab_idx]]
-    data.table::setattr(comb_imps[[i]], 'label', lab)
-  }
-
-  da<-data.matrix(comb_imps[seq(2, ncol(comb_imps))])
-  zero_models<-c(1, 1+which(abs(plyr::aaply(da, 2, function(x) sum(x^2) )-0)>1.0E-10))
-  comb_imps<-comb_imps[zero_models]
-
-  comb_imps$variable<-as.character(comb_imps$variable)
-
-  comb_imps<-dplyr::right_join(tibble(variable=colnames(adf), varlabel=Hmisc::label(adf) ), comb_imps, by='variable')
-
-  return(comb_imps)
-}

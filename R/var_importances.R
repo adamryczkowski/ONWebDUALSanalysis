@@ -1,16 +1,26 @@
 #Gathers variable importances across all models
 gather_variable_importances<-function(models, adf, df) {
   var_imp<-function(model, adf) {
-    cat(paste0(model$method, '\n'))
-    explainer<-DALEX::explain(model, data=adf %>% select(-dv), y=adf$dv)
-    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "raw"),-label)
-    names(dfexp)<-c('variable', model$method)
+    dfexp=tryCatch({
+#      cat(paste0(model$method, '\n'))
+      explainer<-DALEX::explain(model, data=adf %>% select(-dv), y=adf$dv)
+      dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "ratio"),-label)
+      names(dfexp)<-c('variable', model$method)
+      return(dfexp)},
+      error=function(e) {
+        return(paste0('error ', e$message, ' in model ', model$method))
+      }
+    )
     dfexp
   }
 
+
   var_imps<-foreach(model = models) %dopar%
     var_imp(model=model,  adf=adf)
+
   names(var_imps) <- names(models)
+
+  var_imps<-var_imps[!purrr::map_lgl(var_imps, is_character)]
 
   comb_imps<-reduce(var_imps, function(imps1, imps2) {
     dplyr::full_join(imps1, imps2, by = 'variable')
@@ -63,4 +73,43 @@ mds_from_varimps<-function(comb_imps, df, flag_variables=TRUE) {
     labs(x="", y="") + theme_bw()
 
   plot1
+}
+
+gather_detailed_variable_importances<-function(model, adf, df, how_many_resamples=500) {
+  var_imp<-function(model, adf, nr) {
+    explainer<-DALEX::explain(model, data=adf %>% select(-dv), y=adf$dv)
+    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "raw"),-label)
+    #    dfexp<-dplyr::select(DALEX::variable_importance(explainer, loss_function = DALEX::loss_root_mean_square, type = "difference"),-label)
+    names(dfexp)<-c('variable', paste0('var_', nr))
+    dfexp
+  }
+
+  var_imps<-foreach(nr = seq(how_many_resamples)) %dopar%
+    var_imp(model=model,  adf=adf, nr=nr)
+
+  comb_imps<-reduce(var_imps, function(imps1, imps2) {
+    dplyr::full_join(imps1, imps2, by = 'variable')
+  })
+
+  a<-data.matrix(comb_imps[,seq(2, ncol(comb_imps))])
+  fullmodels<-a[1,]
+  baselines<-a[nrow(a),]
+
+  a2<-((a - fullmodels)/(baselines - fullmodels))
+#  a2<-a
+  ans<-tibble(variable=as.character(comb_imps[[1]]),
+              # raw_importances=plyr::aaply(a2,1,mean),
+              # sd_raw_importances=plyr::aaply(a2,1,sd),
+              # md_raw_importances=plyr::aaply(a2,1,median),
+              # low_raw_importances=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.25)),
+              # high_raw_importances=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.75))
+              importances=plyr::aaply(a2,1,function(x) mean(x, na.rm=TRUE)),
+              sd_importances=plyr::aaply(a2,1,function(x) sd(x, na.rm=TRUE)),
+              md_importances=plyr::aaply(a2,1,function(x) median(x, na.rm=TRUE)),
+              low_importances=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.25, na.rm=TRUE)),
+              high_importances=plyr::aaply(a2,1,function(x) quantile(x, probs = 0.75, na.rm=TRUE))
+  )
+
+  ans2<-dplyr::arrange(dplyr::right_join(tibble(variable=colnames(adf), varlabel=Hmisc::label(adf)), ans, by='variable'), -importances)
+  return(ans2)
 }
