@@ -13,7 +13,7 @@ select_variables_sep2018<-function(joined_df) {
 
   flags2=(db$q_16b=='Yes' & !is.na(db$q_36a)) #bulbat
   flags1=(!flags2 & db$q_16a=='Yes' & db$q_49a=='Cervical' & !is.na(db$q_36a)) #lower limb
-  flags3=(!flags2 & !flags2 & db$q_16a=='Yes' & db$q_49a=='Lumbo-sacral' & !is.na(db$q_36a)) #upper limb
+  flags3=(!flags2 & !flags1 & db$q_16a=='Yes' & db$q_49a=='Lumbo-sacral' & !is.na(db$q_36a)) #upper limb
   ans=flags1*1 + flags2*2 + flags3*3
   db[,iv56:=factor(ifelse(ans==0, NA, ans), labels=c("Bulbar", 'Upper limb', 'Lower limb'),  levels=1:3)]
 #  setattr(db$iv56, 'label', 'Fenotype classification 1')

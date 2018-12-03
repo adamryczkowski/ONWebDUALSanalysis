@@ -63,6 +63,10 @@ process_q48<-function(dt) {
     var<-purrr::map_int(sets, locate_grouping, grouping=gr_list)
     dt[,(var_name):=var]
     data.table::setattr(dt[[var_name]], 'label', paste0("Ordinal number of ", gr_name, " symptoms"))
+    var_name<-paste0('q_48_', i,"_e")
+    var<-factor(is.na(var), labels=c("None","Exist"), levels = c(FALSE, TRUE))
+    dt[,(var_name):=var]
+    data.table::setattr(dt[[var_name]], 'label', paste0(gr_name, " symptoms"))
   }
 
   return(dt)
